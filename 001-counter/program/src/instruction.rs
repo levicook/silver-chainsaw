@@ -5,25 +5,29 @@ pub enum CounterInstruction {
     /// Increments the counter by 1
     ///
     /// Accounts expected:
-    /// 0. `[signer]` Account of the person incrementing the counter.
+    /// 0. `[writeable]` The program account that holds counter state.
+    /// 1. `[]` The rent sysvar.
     Increment,
 
     /// Increments the counter by user supplied amount.
     ///
     /// Accounts expected:
-    /// 0. `[signer]` Account of the person decrementing the counter.
+    /// 0. `[writeable]` The program account that holds counter state.
+    /// 1. `[]` The rent sysvar.
     IncrementBy { amount: u16 },
 
     /// Decrements the counter by 1
     ///
     /// Accounts expected:
-    /// 0. `[signer]` Account of the person decrementing the counter.
+    /// 0. `[writeable]` The program account that holds counter state.
+    /// 1. `[]` The rent sysvar.
     Decrement,
 
     /// Decrements the counter by user supplied amount.
     ///
     /// Accounts expected:
-    /// 0. `[signer]` Account of the person decrementing the counter.
+    /// 0. `[writeable]` The program account that holds counter state.
+    /// 1. `[]` The rent sysvar.
     DecrementBy { amount: u16 },
 }
 
