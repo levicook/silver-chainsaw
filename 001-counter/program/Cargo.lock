@@ -666,8 +666,11 @@ dependencies = [
 name = "counter"
 version = "0.1.0"
 dependencies = [
+ "num-derive",
+ "num-traits",
  "solana-program",
  "solana-validator",
+ "thiserror",
 ]
 
 [[package]]
