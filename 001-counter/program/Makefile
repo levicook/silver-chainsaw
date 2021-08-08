@@ -5,11 +5,11 @@ check:
 clean:
 	@cargo clean
 
-build: # test
+build: test
 	@cargo build-bpf
 
-# test:
-# 	@cargo test-bpf
+test:
+	@cargo test
 
 deploy: build
 	@solana program deploy target/deploy/counter.so
