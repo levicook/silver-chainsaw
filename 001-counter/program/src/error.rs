@@ -8,7 +8,8 @@ use thiserror::Error;
 
 #[derive(Clone, Copy, Debug, Error, FromPrimitive)]
 pub enum CounterError {
-    //
+    // Overflow
+    // Underflow
 }
 
 impl From<CounterError> for ProgramError {
