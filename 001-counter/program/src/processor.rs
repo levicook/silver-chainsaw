@@ -13,8 +13,9 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     instruction_data: &[u8],
 ) -> ProgramResult {
-    let accounts_iter = &mut accounts.iter();
+    let instruction = CounterInstruction::try_from_slice(instruction_data)?;
 
+    let accounts_iter = &mut accounts.iter();
     let account = next_account_info(accounts_iter)?;
     let rent = &Rent::from_account_info(account)?;
     if !rent.is_exempt(account.lamports(), account.data_len()) {
@@ -26,7 +27,7 @@ pub fn process_instruction(
         Err(_) => Counter::default(),
     };
 
-    match CounterInstruction::try_from_slice(instruction_data)? {
+    match instruction {
         CounterInstruction::Increment => process_increment(account, &mut counter, 1),
         CounterInstruction::IncrementBy { amount } => {
             process_increment(account, &mut counter, amount)
@@ -38,6 +39,7 @@ pub fn process_instruction(
     }
 }
 
+// fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) -> ProgramResult {
 fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) -> ProgramResult {
     if let Some(new_value) = counter.value.checked_add(amount as u32) {
         counter.value = new_value;
