@@ -1,7 +1,7 @@
 import { resolve } from 'path'
 import borsh from 'borsh'
 import fs from 'fs'
-import { Connection, Keypair, sendAndConfirmTransaction, Transaction, TransactionInstruction } from "@solana/web3.js"
+import { Connection, Keypair, sendAndConfirmTransaction, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { CounterInstruction } from './instruction'
 
 main(process.argv.slice(2)).then(
@@ -12,15 +12,14 @@ main(process.argv.slice(2)).then(
     }
 )
 
-async function main(args: string[]) {
-    const ix1 = CounterInstruction.incrementBy(5)
-    const ix2 = CounterInstruction.decode(ix1.encode())
-    console.log(ix1 == ix2)
-    console.log('ix1', ix1)
-    console.log('ix2', ix2)
-}
+// async function main(args: string[]) {
+//     console.log('>> increment    ', CounterInstruction.increment().encode().toString('hex'))
+//     console.log('>> increment_by ', CounterInstruction.incrementBy(5).encode().toString('hex'))
+//     console.log('>> decrement    ', CounterInstruction.decrement().encode().toString('hex'))
+//     console.log('>> decrement_by ', CounterInstruction.decrementBy(5).encode().toString('hex'))
+// }
 
-async function mainx(args: string[]) {
+async function main(args: string[]) {
     // let [instruction, amount] = args
     // eg: increment_by 10
     // eg: decrement_by 20
@@ -50,17 +49,29 @@ async function mainx(args: string[]) {
     }
     console.log(`Program confirmed: ${programId}`)
 
-    const ix = new TransactionInstruction({
-        keys: [],
-        programId,
-        data: Buffer.alloc(0), // THIS SHOULD FAIL!
-    })
+    const data = CounterInstruction.incrementBy(65535).encode()
+    // const data = CounterInstruction.decrement().encode()
 
-    const tx = new Transaction()
+    const ix = new TransactionInstruction({
+        programId,
+        keys: [
+            { pubkey: programId, isSigner: false, isWritable: true },
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+        ],
+        data,
+    })
+    console.log('ix', ix)
+
+    const tx = new Transaction({
+        // recentBlockhash,
+        feePayer: aliceKeypair.publicKey,
+        // signatures,
+    })
     tx.add(ix)
+    console.log('tx', tx)
 
     const signers = [aliceKeypair]
-    await sendAndConfirmTransaction(connection, tx, signers)
+    console.log('??', await sendAndConfirmTransaction(connection, tx, signers))
 
     // inc as alice
     // inc as bob
