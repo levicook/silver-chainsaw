@@ -2,6 +2,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq)]
 pub enum CounterInstruction {
+    // TODO(Levi): Initialize -- someone has to pay rent??
+
     /// Increments the counter by 1
     ///
     /// Accounts expected:

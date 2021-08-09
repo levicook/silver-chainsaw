@@ -1,14 +1,26 @@
 import { resolve } from 'path'
+import borsh from 'borsh'
 import fs from 'fs'
 import { Connection, Keypair, sendAndConfirmTransaction, Transaction, TransactionInstruction } from "@solana/web3.js"
+import { CounterInstruction } from './instruction'
 
-function readKeypair(filePath: string): Keypair {
-    const rawSecret = fs.readFileSync(filePath, { encoding: 'utf-8' })
-    const secretKey = Uint8Array.from(JSON.parse(rawSecret))
-    return Keypair.fromSecretKey(secretKey)
-}
+main(process.argv.slice(2)).then(
+    () => process.exit(0),
+    (err) => {
+        console.error(err)
+        process.exit(1)
+    }
+)
 
 async function main(args: string[]) {
+    const ix1 = CounterInstruction.incrementBy(5)
+    const ix2 = CounterInstruction.decode(ix1.encode())
+    console.log(ix1 == ix2)
+    console.log('ix1', ix1)
+    console.log('ix2', ix2)
+}
+
+async function mainx(args: string[]) {
     // let [instruction, amount] = args
     // eg: increment_by 10
     // eg: decrement_by 20
@@ -57,13 +69,11 @@ async function main(args: string[]) {
     // etc...
 }
 
-main(process.argv.slice(2)).then(
-    () => process.exit(0),
-    (err) => {
-        console.error(err)
-        process.exit(1)
-    }
-)
+function readKeypair(filePath: string): Keypair {
+    const rawSecret = fs.readFileSync(filePath, { encoding: 'utf-8' })
+    const secretKey = Uint8Array.from(JSON.parse(rawSecret))
+    return Keypair.fromSecretKey(secretKey)
+}
 
 function programKeypairPath(): string {
     return resolve(__dirname, '../../program/target/deploy/counter-keypair.json')
