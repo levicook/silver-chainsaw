@@ -1,13 +1,6 @@
 use crate::{error::CounterError, instruction::CounterInstruction, state::Counter};
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    pubkey::Pubkey,
-    // rent::Rent,
-    // sysvar::Sysvar,
-};
+use solana_program::{account_info::{next_account_info, AccountInfo}, entrypoint::ProgramResult, msg, pubkey::Pubkey};
 
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -18,27 +11,31 @@ pub fn process_instruction(
     msg!("instruction {:?}", instruction);
 
     let accounts_iter = &mut accounts.iter();
-    let account = next_account_info(accounts_iter)?;
 
-    // let rent = &Rent::from_account_info(account)?;
-    // if !rent.is_exempt(account.lamports(), account.data_len()) {
+    // let signer_account = next_account_info(accounts_iter)?;
+    let state_account = next_account_info(accounts_iter)?;
+
+    // TODO(Levi) need to understand rent / ensure our storage isn't going away:
+    // let rent_account = next_account_info(accounts_iter)?;
+    // let rent = &Rent::from_account_info(rent_account)?;
+    // if !rent.is_exempt(state_account.lamports(), state_account.data_len()) {
     //     return Err(CounterError::NotRentExempt.into());
     // }
 
-    let mut counter = match Counter::try_from_slice(&account.data.borrow()) {
+    let mut counter = match Counter::try_from_slice(&state_account.data.borrow()) {
         Ok(counter) => counter,
         Err(_) => Counter::default(),
     };
     msg!("counter {:?}", counter);
 
     match instruction {
-        CounterInstruction::Increment => process_increment(account, &mut counter, 1),
+        CounterInstruction::Increment => process_increment(state_account, &mut counter, 1),
         CounterInstruction::IncrementBy { amount } => {
-            process_increment(account, &mut counter, amount)
+            process_increment(state_account, &mut counter, amount)
         }
-        CounterInstruction::Decrement => process_decrement(account, &mut counter, 1),
+        CounterInstruction::Decrement => process_decrement(state_account, &mut counter, 1),
         CounterInstruction::DecrementBy { amount } => {
-            process_decrement(account, &mut counter, amount)
+            process_decrement(state_account, &mut counter, amount)
         }
     }
 }
@@ -49,7 +46,7 @@ fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) 
     if let Some(new_value) = counter.value.checked_add(amount as u32) {
         counter.value = new_value;
     } else {
-        return Err(CounterError::Overflow.into())
+        return Err(CounterError::Overflow.into());
     }
 
     let writer = &mut &mut account.data.borrow_mut()[..];

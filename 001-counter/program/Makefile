@@ -3,6 +3,7 @@ check:
 	@cargo check
 
 clean:
+	@make -C ../../keypairs --silent clean
 	@cargo clean
 
 build: test
@@ -12,7 +13,5 @@ test:
 	@cargo test
 
 deploy: build
-	@solana program deploy target/deploy/counter.so
-
-program-id:
-	@solana-keygen pubkey target/deploy/counter-keypair.json
+	@make -C ../../keypairs --silent all
+	@solana program deploy target/deploy/counter.so --keypair ../../keypairs/alice-keypair.json --program-id ../../keypairs/counter-keypair.json

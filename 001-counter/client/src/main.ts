@@ -1,4 +1,4 @@
-import { resolve } from 'path'
+import { basename, resolve } from 'path'
 import fs from 'fs'
 import { Connection, Keypair, sendAndConfirmTransaction, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { CounterInstruction } from './instruction'
@@ -11,116 +11,78 @@ import { CounterInstruction } from './instruction'
     })
 }())
 
-async function main(cmd: string, args: string[]) {
-    function usage() {
-        console.log(`
-ensure-program-state-account-ready
-    `.trim())
-    }
-
-    switch (cmd) {
+async function main(command: string, args: string[]) {
+    switch (command) {
+        case 'decrement':
+            return await decrement(args)
         case 'ensure-program-state-account-ready':
-            await ensureProgramStateAccountReady(args)
-            break
+            return await ensureProgramStateAccountReady(args)
+        case 'increment':
+            return await increment(args)
         default:
-            usage();
+            throw new Error(`Unrecognized command: '${command}'`)
     }
 }
 
 async function ensureProgramStateAccountReady(args: string[]) {
-    try {
-        const oldAccountKeypair = readProgramStateKeypair();
-        const oldAccountPubkey = oldAccountKeypair.publicKey;
-        console.log(oldAccountPubkey.toBase58());
+    const programStateKeypair = readProgramStateKeypair();
+    const connection = await connect();
+    const balance = await connection.getBalance(programStateKeypair.publicKey)
+    if (balance > 0) {
         return
-    } catch (err) {
-        console.log('creating program state account');
-
-        const aliceKeypair = readAliceKeypair();
-        const fromPubkey = aliceKeypair.publicKey;
-        const programKeypair = readProgramKeypair();
-        const programId = programKeypair.publicKey;
-        const newAccountKeypair = new Keypair();
-        const newAccountPubkey = newAccountKeypair.publicKey;
-
-        const connection = await connect();
-
-        const space = 4
-        const lamports = await connection.getMinimumBalanceForRentExemption(space, 'singleGossip');
-
-        const tx = new Transaction();
-        tx.add(SystemProgram.createAccount({
-            space,
-            lamports,
-            fromPubkey,
-            newAccountPubkey,
-            programId,
-        }))
-
-        const signers = [aliceKeypair, newAccountKeypair];
-        await connection.sendTransaction(tx, signers);
-
-        fs.writeFileSync(programStateKeypairPath(),
-            JSON.stringify(Array.from(newAccountKeypair.secretKey)),
-            'utf-8',
-        );
-
-        console.log(newAccountPubkey.toBase58())
     }
+
+    const aliceKeypair = readAliceKeypair();
+    const programKeypair = readProgramKeypair();
+    const space = 4
+
+    const tx = new Transaction();
+    tx.add(SystemProgram.createAccount({
+        space,
+        lamports: await connection.getMinimumBalanceForRentExemption(space, 'singleGossip'),
+        fromPubkey: aliceKeypair.publicKey,
+        newAccountPubkey: programStateKeypair.publicKey,
+        programId: programKeypair.publicKey,
+    }));
+
+    await connection.sendTransaction(tx, [
+        aliceKeypair,
+        programStateKeypair,
+    ]);
+}
+// const data = CounterInstruction.incrementBy(65535).encode()
+
+async function increment(args: string[]) {
+    await sendCounterInstruction(CounterInstruction.increment());
 }
 
-async function mainx(args: string[]) {
-    // let [instruction, amount] = args
-    // eg: increment_by 10
-    // eg: decrement_by 20
+async function decrement(args: string[]) {
+    await sendCounterInstruction(CounterInstruction.decrement());
+}
 
-    const programKeypair = readProgramKeypair()
-    const aliceKeypair = readAliceKeypair()
-    const bobKeypair = readBobKeypair()
-
+async function sendCounterInstruction(counterInstruction: CounterInstruction) {
     const connection = await connect()
 
-    const programId = programKeypair.publicKey
-    const programInfo = await connection.getAccountInfo(programId)
-    if (!programInfo) {
-        throw new Error('Program needs to be deployed')
-    }
-    if (!programInfo.executable) {
-        throw new Error('Program is not executable')
-    }
-    console.log(`Program confirmed: ${programId}`)
+    const programKeypair = readProgramKeypair();
+    const programStateKeypair = readProgramStateKeypair();
+    const aliceKeypair = readAliceKeypair()
 
-    // TODO: create the coutner program's storage account
-    // TODO: fund the coutner program's storage account
-    // TODO: pass it in as a writeable account on inc, dec
+    const tx = new Transaction({
+        feePayer: aliceKeypair.publicKey
+    });
 
-    // const data = CounterInstruction.increment().encode()
-    const data = CounterInstruction.incrementBy(65535).encode()
-    // const data = CounterInstruction.decrement().encode()
-    // const data = Buffer.alloc(0)
-
-    const instruction = new TransactionInstruction({
-        programId,
+    tx.add(new TransactionInstruction({
+        programId: programKeypair.publicKey,
         keys: [
-            { pubkey: programId, isSigner: false, isWritable: true },
-            { pubkey: aliceKeypair.publicKey, isSigner: true, isWritable: false },
-            // { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            { pubkey: programStateKeypair.publicKey, isSigner: false, isWritable: true },
+            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
         ],
-        data,
-    })
-    // console.log('ix', instruction)
-
-    const transaction = new Transaction({
-        // recentBlockhash,
-        feePayer: aliceKeypair.publicKey,
-        // signatures,
-    })
-    transaction.add(instruction)
+        data: counterInstruction.encode(),
+    }));
 
     const signers = [aliceKeypair]
-    const rx = await sendAndConfirmTransaction(connection, transaction, signers)
-
-    console.log('rx', rx)
+    const txid = await sendAndConfirmTransaction(connection, tx, signers)
+    console.log('txid', txid)
 }
 
 async function connect(): Promise<Connection> {
