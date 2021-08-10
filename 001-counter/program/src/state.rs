@@ -13,9 +13,9 @@ impl Default for Counter {
 
 #[cfg(test)]
 mod tests {
-    use borsh::{BorshDeserialize, BorshSerialize};
-
     use crate::state::Counter;
+    use borsh::{BorshDeserialize, BorshSerialize};
+    // use std::mem::size_of;
 
     #[test]
     fn test_counter_serialization() {
@@ -23,5 +23,7 @@ mod tests {
         let encoded = original.try_to_vec().expect("Could not encode");
         let decoded = Counter::try_from_slice(&encoded).expect("Could not decode");
         assert_eq!(original, decoded);
+
+        // println!("size_of Counter {}", size_of::<Counter>());
     }
 }

@@ -1,43 +1,84 @@
 import { resolve } from 'path'
-import borsh from 'borsh'
 import fs from 'fs'
-import { Connection, Keypair, sendAndConfirmTransaction, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js"
+import { Connection, Keypair, sendAndConfirmTransaction, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { CounterInstruction } from './instruction'
 
-main(process.argv.slice(2)).then(
-    () => process.exit(0),
-    (err) => {
+(function () {
+    const [cmd, ...args] = process.argv.slice(2)
+    main(cmd, args).then(() => process.exit(0), (err) => {
         console.error(err)
         process.exit(1)
+    })
+}())
+
+async function main(cmd: string, args: string[]) {
+    function usage() {
+        console.log(`
+ensure-program-state-account-ready
+    `.trim())
     }
-)
 
-// async function main(args: string[]) {
-//     console.log('>> increment    ', CounterInstruction.increment().encode().toString('hex'))
-//     console.log('>> increment_by ', CounterInstruction.incrementBy(5).encode().toString('hex'))
-//     console.log('>> decrement    ', CounterInstruction.decrement().encode().toString('hex'))
-//     console.log('>> decrement_by ', CounterInstruction.decrementBy(5).encode().toString('hex'))
-// }
+    switch (cmd) {
+        case 'ensure-program-state-account-ready':
+            await ensureProgramStateAccountReady(args)
+            break
+        default:
+            usage();
+    }
+}
 
-async function main(args: string[]) {
+async function ensureProgramStateAccountReady(args: string[]) {
+    try {
+        const oldAccountKeypair = readProgramStateKeypair();
+        const oldAccountPubkey = oldAccountKeypair.publicKey;
+        console.log(oldAccountPubkey.toBase58());
+        return
+    } catch (err) {
+        console.log('creating program state account');
+
+        const aliceKeypair = readAliceKeypair();
+        const fromPubkey = aliceKeypair.publicKey;
+        const programKeypair = readProgramKeypair();
+        const programId = programKeypair.publicKey;
+        const newAccountKeypair = new Keypair();
+        const newAccountPubkey = newAccountKeypair.publicKey;
+
+        const connection = await connect();
+
+        const space = 4
+        const lamports = await connection.getMinimumBalanceForRentExemption(space, 'singleGossip');
+
+        const tx = new Transaction();
+        tx.add(SystemProgram.createAccount({
+            space,
+            lamports,
+            fromPubkey,
+            newAccountPubkey,
+            programId,
+        }))
+
+        const signers = [aliceKeypair, newAccountKeypair];
+        await connection.sendTransaction(tx, signers);
+
+        fs.writeFileSync(programStateKeypairPath(),
+            JSON.stringify(Array.from(newAccountKeypair.secretKey)),
+            'utf-8',
+        );
+
+        console.log(newAccountPubkey.toBase58())
+    }
+}
+
+async function mainx(args: string[]) {
     // let [instruction, amount] = args
     // eg: increment_by 10
     // eg: decrement_by 20
 
-    const endpoint = 'http://localhost:8899'
-    const programKeypair = readKeypair(programKeypairPath())
-    const aliceKeypair = readKeypair(aliceKeypairPath())
-    const bobKeypair = readKeypair(bobKeypairPath())
+    const programKeypair = readProgramKeypair()
+    const aliceKeypair = readAliceKeypair()
+    const bobKeypair = readBobKeypair()
 
-    const connection = new Connection(endpoint, 'confirmed')
-    const version = await connection.getVersion()
-    console.log('Connection established:', {
-        endpoint,
-        programKeypair: programKeypair.publicKey.toBase58(),
-        aliceKeypair: aliceKeypair.publicKey.toBase58(),
-        bobKeypair: bobKeypair.publicKey.toBase58(),
-        version
-    })
+    const connection = await connect()
 
     const programId = programKeypair.publicKey
     const programInfo = await connection.getAccountInfo(programId)
@@ -49,35 +90,65 @@ async function main(args: string[]) {
     }
     console.log(`Program confirmed: ${programId}`)
 
+    // TODO: create the coutner program's storage account
+    // TODO: fund the coutner program's storage account
+    // TODO: pass it in as a writeable account on inc, dec
+
+    // const data = CounterInstruction.increment().encode()
     const data = CounterInstruction.incrementBy(65535).encode()
     // const data = CounterInstruction.decrement().encode()
+    // const data = Buffer.alloc(0)
 
-    const ix = new TransactionInstruction({
+    const instruction = new TransactionInstruction({
         programId,
         keys: [
             { pubkey: programId, isSigner: false, isWritable: true },
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            { pubkey: aliceKeypair.publicKey, isSigner: true, isWritable: false },
+            // { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
         ],
         data,
     })
-    console.log('ix', ix)
+    // console.log('ix', instruction)
 
-    const tx = new Transaction({
+    const transaction = new Transaction({
         // recentBlockhash,
         feePayer: aliceKeypair.publicKey,
         // signatures,
     })
-    tx.add(ix)
-    console.log('tx', tx)
+    transaction.add(instruction)
 
     const signers = [aliceKeypair]
-    console.log('??', await sendAndConfirmTransaction(connection, tx, signers))
+    const rx = await sendAndConfirmTransaction(connection, transaction, signers)
 
-    // inc as alice
-    // inc as bob
-    // inc_by as alice
-    // inc_by as bob
-    // etc...
+    console.log('rx', rx)
+}
+
+async function connect(): Promise<Connection> {
+    const endpoint = readEndpoint()
+    const connection = new Connection(endpoint, 'singleGossip')
+    const version = await connection.getVersion()
+    // console.log('Connection established:', { endpoint, version })
+    return connection
+}
+
+function readEndpoint() {
+    return 'http://localhost:8899'
+}
+
+function readProgramKeypair() {
+    return readKeypair(programKeypairPath())
+}
+
+function readProgramStateKeypair() {
+    return readKeypair(programStateKeypairPath())
+}
+
+function readAliceKeypair() {
+    return readKeypair(aliceKeypairPath())
+}
+
+function readBobKeypair() {
+    return readKeypair(bobKeypairPath())
 }
 
 function readKeypair(filePath: string): Keypair {
@@ -88,6 +159,10 @@ function readKeypair(filePath: string): Keypair {
 
 function programKeypairPath(): string {
     return resolve(__dirname, '../../program/target/deploy/counter-keypair.json')
+}
+
+function programStateKeypairPath(): string {
+    return resolve(__dirname, '../../../keypairs/counter-state-keypair.json')
 }
 
 function aliceKeypairPath(): string {
