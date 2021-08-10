@@ -16,6 +16,7 @@ counter-keypair.json:
 
 counter-state-keypair.json:
 	@solana-keygen new --outfile $@ --no-bip39-passphrase --silent
+	@npm run ensure-program-state-account-ready --prefix ../001-counter/client
 
 clean:
 	@rm -fr *-keypair.json

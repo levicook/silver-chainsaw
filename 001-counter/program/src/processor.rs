@@ -1,6 +1,11 @@
 use crate::{error::CounterError, instruction::CounterInstruction, state::Counter};
 use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{account_info::{next_account_info, AccountInfo}, entrypoint::ProgramResult, msg, pubkey::Pubkey};
+use solana_program::{
+    account_info::{next_account_info, AccountInfo},
+    entrypoint::ProgramResult,
+    msg,
+    pubkey::Pubkey,
+};
 
 pub fn process_instruction(
     _program_id: &Pubkey,
@@ -8,7 +13,6 @@ pub fn process_instruction(
     instruction_data: &[u8],
 ) -> ProgramResult {
     let instruction = CounterInstruction::try_from_slice(instruction_data)?;
-    msg!("instruction {:?}", instruction);
 
     let accounts_iter = &mut accounts.iter();
 
@@ -26,7 +30,6 @@ pub fn process_instruction(
         Ok(counter) => counter,
         Err(_) => Counter::default(),
     };
-    msg!("counter {:?}", counter);
 
     match instruction {
         CounterInstruction::Increment => process_increment(state_account, &mut counter, 1),
@@ -42,7 +45,7 @@ pub fn process_instruction(
 
 // fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) -> ProgramResult {
 fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) -> ProgramResult {
-    msg!("process_increment {:?} {:?}", counter, amount);
+    msg!("process_increment ({} + {})", counter.value, amount);
     if let Some(new_value) = counter.value.checked_add(amount as u32) {
         counter.value = new_value;
     } else {
@@ -55,7 +58,7 @@ fn process_increment(account: &AccountInfo, counter: &mut Counter, amount: u16) 
 }
 
 fn process_decrement(account: &AccountInfo, counter: &mut Counter, amount: u16) -> ProgramResult {
-    msg!("process_decrement {:?} {:?}", counter, amount);
+    msg!("process_decrement ({} - {})", counter.value, amount);
     if let Some(new_value) = counter.value.checked_sub(amount as u32) {
         counter.value = new_value;
     } else {

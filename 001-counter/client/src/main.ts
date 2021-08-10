@@ -15,20 +15,26 @@ async function main(command: string, args: string[]) {
     switch (command) {
         case 'decrement':
             return await decrement(args)
+        case 'decrement-by':
+            return await decrementBy(args)
         case 'ensure-program-state-account-ready':
-            return await ensureProgramStateAccountReady(args)
+            return await ensureProgramStateAccountReady()
         case 'increment':
             return await increment(args)
+        case 'increment-by':
+            return await incrementBy(args)
         default:
             throw new Error(`Unrecognized command: '${command}'`)
     }
 }
 
-async function ensureProgramStateAccountReady(args: string[]) {
-    const programStateKeypair = readProgramStateKeypair();
+async function ensureProgramStateAccountReady() {
     const connection = await connect();
+
+    const programStateKeypair = readProgramStateKeypair();
     const balance = await connection.getBalance(programStateKeypair.publicKey)
     if (balance > 0) {
+        console.log(`program state account exists; balance: ${balance}`);
         return
     }
 
@@ -50,14 +56,29 @@ async function ensureProgramStateAccountReady(args: string[]) {
         programStateKeypair,
     ]);
 }
-// const data = CounterInstruction.incrementBy(65535).encode()
 
 async function increment(args: string[]) {
     await sendCounterInstruction(CounterInstruction.increment());
 }
 
+async function incrementBy(args: string[]) {
+    // TODO map args to instructions, issue one tx
+    await Promise.all(args.map(async arg => {
+        const amount = parseInt(arg, 10);
+        await sendCounterInstruction(CounterInstruction.incrementBy(amount));
+    }))
+}
+
 async function decrement(args: string[]) {
     await sendCounterInstruction(CounterInstruction.decrement());
+}
+
+async function decrementBy(args: string[]) {
+    // TODO map args to instructions, issue one tx
+    await Promise.all(args.map(async arg => {
+        const amount = parseInt(arg, 10);
+        await sendCounterInstruction(CounterInstruction.decrementBy(amount));
+    }))
 }
 
 async function sendCounterInstruction(counterInstruction: CounterInstruction) {
@@ -80,17 +101,12 @@ async function sendCounterInstruction(counterInstruction: CounterInstruction) {
         data: counterInstruction.encode(),
     }));
 
-    const signers = [aliceKeypair]
-    const txid = await sendAndConfirmTransaction(connection, tx, signers)
-    console.log('txid', txid)
+    const signers = [aliceKeypair];
+    console.log(await sendAndConfirmTransaction(connection, tx, signers));
 }
 
 async function connect(): Promise<Connection> {
-    const endpoint = readEndpoint()
-    const connection = new Connection(endpoint, 'singleGossip')
-    const version = await connection.getVersion()
-    // console.log('Connection established:', { endpoint, version })
-    return connection
+    return new Connection(readEndpoint(), 'singleGossip')
 }
 
 function readEndpoint() {
@@ -120,7 +136,7 @@ function readKeypair(filePath: string): Keypair {
 }
 
 function programKeypairPath(): string {
-    return resolve(__dirname, '../../program/target/deploy/counter-keypair.json')
+    return resolve(__dirname, '../../../keypairs/counter-keypair.json')
 }
 
 function programStateKeypairPath(): string {
