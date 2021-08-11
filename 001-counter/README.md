@@ -31,9 +31,9 @@ recommend getting a feel for how it's used.
 
 1. Generate keypairs for testing with:
 
-   - `make all --directory=keypairs` \
+   - `make all --directory=keypairs`
 
-   - note: this assumes you have `solana` installed \
+   - note: this assumes you have `solana` installed
 
    - note: it also assumes you have run \
      `solana config set --url http://localhost:8899`
