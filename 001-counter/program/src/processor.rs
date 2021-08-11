@@ -5,6 +5,8 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 pub fn process_instruction(
@@ -16,15 +18,17 @@ pub fn process_instruction(
 
     let accounts_iter = &mut accounts.iter();
 
-    // let signer_account = next_account_info(accounts_iter)?;
     let state_account = next_account_info(accounts_iter)?;
 
-    // TODO(Levi) need to understand rent / ensure our storage isn't going away:
-    // let rent_account = next_account_info(accounts_iter)?;
-    // let rent = &Rent::from_account_info(rent_account)?;
-    // if !rent.is_exempt(state_account.lamports(), state_account.data_len()) {
-    //     return Err(CounterError::NotRentExempt.into());
-    // }
+    let rent = Rent::get()?;
+    if !rent.is_exempt(state_account.lamports(), state_account.data_len()) {
+        msg!(
+            "NotRentExempt: balance {} data_len {}",
+            state_account.lamports(),
+            state_account.data_len()
+        );
+        return Err(CounterError::NotRentExempt.into());
+    }
 
     let mut counter = match Counter::try_from_slice(&state_account.data.borrow()) {
         Ok(counter) => counter,

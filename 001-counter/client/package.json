@@ -13,7 +13,6 @@
   "scripts": {
     "decrement": "ts-node src/main.ts decrement",
     "decrement-by": "ts-node src/main.ts decrement-by",
-    "ensure-program-state-account-ready": "ts-node src/main.ts ensure-program-state-account-ready",
     "increment": "ts-node src/main.ts increment",
     "increment-by": "ts-node src/main.ts increment-by",
     "keypairs": "make -C ../../keypairs all"

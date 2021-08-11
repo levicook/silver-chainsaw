@@ -1,4 +1,4 @@
-import { basename, resolve } from 'path'
+import { resolve } from 'path'
 import fs from 'fs'
 import { Connection, Keypair, sendAndConfirmTransaction, SystemProgram, SYSVAR_RENT_PUBKEY, Transaction, TransactionInstruction } from "@solana/web3.js"
 import { CounterInstruction } from './instruction'
@@ -17,8 +17,6 @@ async function main(command: string, args: string[]) {
             return await decrement(args)
         case 'decrement-by':
             return await decrementBy(args)
-        case 'ensure-program-state-account-ready':
-            return await ensureProgramStateAccountReady()
         case 'increment':
             return await increment(args)
         case 'increment-by':
@@ -28,13 +26,9 @@ async function main(command: string, args: string[]) {
     }
 }
 
-async function ensureProgramStateAccountReady() {
-    const connection = await connect();
-
-    const programStateKeypair = readProgramStateKeypair();
+async function ensureRentExempt(connection: Connection, programStateKeypair: Keypair) {
     const balance = await connection.getBalance(programStateKeypair.publicKey)
     if (balance > 0) {
-        console.log(`program state account exists; balance: ${balance}`);
         return
     }
 
@@ -54,7 +48,10 @@ async function ensureProgramStateAccountReady() {
     await connection.sendTransaction(tx, [
         aliceKeypair,
         programStateKeypair,
-    ]);
+    ], {
+        preflightCommitment: 'max',
+        skipPreflight: false,
+    });
 }
 
 async function increment(args: string[]) {
@@ -83,10 +80,12 @@ async function decrementBy(args: string[]) {
 
 async function sendCounterInstruction(counterInstruction: CounterInstruction) {
     const connection = await connect()
-
     const programKeypair = readProgramKeypair();
     const programStateKeypair = readProgramStateKeypair();
-    const aliceKeypair = readAliceKeypair()
+    const aliceKeypair = readAliceKeypair();
+
+    // NOTE: We outrun this on a brand-new chain.
+    await ensureRentExempt(connection, programStateKeypair);
 
     const tx = new Transaction({
         feePayer: aliceKeypair.publicKey
@@ -102,7 +101,11 @@ async function sendCounterInstruction(counterInstruction: CounterInstruction) {
     }));
 
     const signers = [aliceKeypair];
-    console.log(await sendAndConfirmTransaction(connection, tx, signers));
+    const txId = await sendAndConfirmTransaction(connection, tx, signers);
+
+    console.log('Transaction', txId, await connection.getTransaction(txId, {
+        commitment: 'confirmed'
+    }));
 }
 
 async function connect(): Promise<Connection> {

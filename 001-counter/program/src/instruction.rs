@@ -2,35 +2,32 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq)]
 pub enum CounterInstruction {
-    // TODO Reset
-
     /// Increments the counter by 1
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    /// 1. `[]` The rent sysvar.
     Increment,
 
     /// Increments the counter by user supplied amount.
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    /// 1. `[]` The rent sysvar.
     IncrementBy { amount: u16 },
 
     /// Decrements the counter by 1
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    /// 1. `[]` The rent sysvar.
     Decrement,
 
     /// Decrements the counter by user supplied amount.
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    /// 1. `[]` The rent sysvar.
     DecrementBy { amount: u16 },
+    //
+    // TODO Reset
+    // TODO ResetTo { value: u32 }
 }
 
 #[cfg(test)]
