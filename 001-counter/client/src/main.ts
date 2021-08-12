@@ -16,11 +16,18 @@ async function main(command: string, args: string[]) {
         case 'decrement':
             return await decrement(args)
         case 'decrement-by':
+        case 'decrement_by':
             return await decrementBy(args)
         case 'increment':
             return await increment(args)
         case 'increment-by':
+        case 'increment_by':
             return await incrementBy(args)
+        case 'reset':
+            return await reset(args)
+        case 'reset-to':
+        case 'reset_to':
+            return await resetTo(args)
         default:
             throw new Error(`Unrecognized command: '${command}'`)
     }
@@ -34,7 +41,7 @@ async function ensureRentExempt(connection: Connection, programStateKeypair: Key
 
     const aliceKeypair = readAliceKeypair();
     const programKeypair = readProgramKeypair();
-    const space = 4
+    const space = 2
 
     const tx = new Transaction();
     tx.add(SystemProgram.createAccount({
@@ -54,51 +61,59 @@ async function ensureRentExempt(connection: Connection, programStateKeypair: Key
     });
 }
 
-async function increment(args: string[]) {
-    await sendCounterInstruction(CounterInstruction.increment());
-}
-
-async function incrementBy(args: string[]) {
-    // TODO map args to instructions, issue one tx
-    await Promise.all(args.map(async arg => {
-        const amount = parseInt(arg, 10);
-        await sendCounterInstruction(CounterInstruction.incrementBy(amount));
-    }))
-}
-
 async function decrement(args: string[]) {
-    await sendCounterInstruction(CounterInstruction.decrement());
+    const ixs = [CounterInstruction.decrement()];
+    await sendInstructions(ixs);
 }
 
 async function decrementBy(args: string[]) {
-    // TODO map args to instructions, issue one tx
-    await Promise.all(args.map(async arg => {
-        const amount = parseInt(arg, 10);
-        await sendCounterInstruction(CounterInstruction.decrementBy(amount));
-    }))
+    const ixs = args.map(arg => CounterInstruction.decrementBy(parseInt(arg, 10)))
+    await sendInstructions(ixs);
 }
 
-async function sendCounterInstruction(counterInstruction: CounterInstruction) {
+async function increment(args: string[]) {
+    const ixs = [CounterInstruction.increment()];
+    await sendInstructions(ixs);
+}
+
+async function incrementBy(args: string[]) {
+    const ixs = args.map(arg => CounterInstruction.incrementBy(parseInt(arg, 10)))
+    await sendInstructions(ixs);
+}
+
+async function reset(args: string[]) {
+    const ixs = [CounterInstruction.reset()];
+    await sendInstructions(ixs);
+}
+
+async function resetTo(args: string[]) {
+    const ixs = args.map(arg => CounterInstruction.resetTo(parseInt(arg, 10)))
+    await sendInstructions(ixs);
+}
+
+async function sendInstructions(instructions: CounterInstruction[]) {
     const connection = await connect()
     const programKeypair = readProgramKeypair();
     const programStateKeypair = readProgramStateKeypair();
     const aliceKeypair = readAliceKeypair();
 
-    // NOTE: We outrun this on a brand-new chain.
+    // NOTE: We outrun this on a brand-new chain / deployment
     await ensureRentExempt(connection, programStateKeypair);
 
     const tx = new Transaction({
         feePayer: aliceKeypair.publicKey
     });
 
-    tx.add(new TransactionInstruction({
-        programId: programKeypair.publicKey,
-        keys: [
-            { pubkey: programStateKeypair.publicKey, isSigner: false, isWritable: true },
-            { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-        ],
-        data: counterInstruction.encode(),
-    }));
+    instructions.forEach(instruction => {
+        tx.add(new TransactionInstruction({
+            programId: programKeypair.publicKey,
+            keys: [
+                { pubkey: programStateKeypair.publicKey, isSigner: false, isWritable: true },
+                { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+            ],
+            data: instruction.encode(),
+        }));
+    })
 
     const signers = [aliceKeypair];
     const txId = await sendAndConfirmTransaction(connection, tx, signers);

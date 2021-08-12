@@ -15,6 +15,8 @@
     "decrement-by": "ts-node src/main.ts decrement-by",
     "increment": "ts-node src/main.ts increment",
     "increment-by": "ts-node src/main.ts increment-by",
-    "keypairs": "make -C ../../keypairs all"
+    "keypairs": "make -C ../../keypairs all",
+    "reset": "ts-node src/main.ts reset",
+    "reset-to": "ts-node src/main.ts reset-to"
   }
 }

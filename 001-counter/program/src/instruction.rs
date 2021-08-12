@@ -12,7 +12,7 @@ pub enum CounterInstruction {
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    IncrementBy { amount: u16 },
+    IncrementBy { amount: u8 },
 
     /// Decrements the counter by 1
     ///
@@ -24,10 +24,19 @@ pub enum CounterInstruction {
     ///
     /// Accounts expected:
     /// 0. `[writable]` Account that holds counter state.
-    DecrementBy { amount: u16 },
-    //
-    // TODO Reset
-    // TODO ResetTo { value: u32 }
+    DecrementBy { amount: u8 },
+
+    /// Resets the counter to zero.
+    ///
+    /// Accounts expected:
+    /// 0. `[writable]` Account that holds counter state.
+    Reset,
+
+    /// Resets the counter to to the supplied value.
+    ///
+    /// Accounts expected:
+    /// 0. `[writable]` Account that holds counter state.
+    ResetTo { value: u16 },
 }
 
 #[cfg(test)]
@@ -45,12 +54,12 @@ mod tests {
 
     #[test]
     fn test_increment_by_serialization() {
-        let original = CounterInstruction::IncrementBy { amount: 65535 };
+        let original = CounterInstruction::IncrementBy { amount: 255 };
         let encoded = original.try_to_vec().expect("Could not encode");
         let decoded = CounterInstruction::try_from_slice(&encoded).expect("Could not decode");
         assert_eq!(original, decoded);
 
-        let ix = CounterInstruction::try_from_slice(&[1, 255, 255]).expect("Could not decode");
+        let ix = CounterInstruction::try_from_slice(&[1, 255]).expect("Could not decode");
         assert_eq!(original, ix);
     }
 
@@ -65,6 +74,22 @@ mod tests {
     #[test]
     fn test_decrement_by_serialization() {
         let original = CounterInstruction::DecrementBy { amount: 5 };
+        let encoded = original.try_to_vec().expect("Could not encode");
+        let decoded = CounterInstruction::try_from_slice(&encoded).expect("Could not decode");
+        assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn test_reset_serialization() {
+        let original = CounterInstruction::Reset;
+        let encoded = original.try_to_vec().expect("Could not encode");
+        let decoded = CounterInstruction::try_from_slice(&encoded).expect("Could not decode");
+        assert_eq!(original, decoded);
+    }
+
+    #[test]
+    fn test_reset_to_serialization() {
+        let original = CounterInstruction::ResetTo { value: 9000 };
         let encoded = original.try_to_vec().expect("Could not encode");
         let decoded = CounterInstruction::try_from_slice(&encoded).expect("Could not decode");
         assert_eq!(original, decoded);

@@ -8,6 +8,10 @@ class Decrement extends Struct { }
 
 class DecrementBy extends Struct { }
 
+class Reset extends Struct { }
+
+class ResetTo extends Struct { }
+
 export class CounterInstruction extends Enum {
     static increment(): CounterInstruction {
         return new CounterInstruction({
@@ -29,6 +33,16 @@ export class CounterInstruction extends Enum {
             decrementBy: new DecrementBy({ amount })
         })
     }
+    static reset(): CounterInstruction {
+        return new CounterInstruction({
+            reset: new Reset({})
+        })
+    }
+    static resetTo(value: number): CounterInstruction {
+        return new CounterInstruction({
+            resetTo: new ResetTo({ value })
+        })
+    }
 }
 
 SOLANA_SCHEMA.set(Increment, {
@@ -39,7 +53,7 @@ SOLANA_SCHEMA.set(Increment, {
 SOLANA_SCHEMA.set(IncrementBy, {
     kind: 'struct',
     fields: [
-        ['amount', 'u16'],
+        ['amount', 'u8'],
     ],
 });
 
@@ -51,7 +65,19 @@ SOLANA_SCHEMA.set(Decrement, {
 SOLANA_SCHEMA.set(DecrementBy, {
     kind: 'struct',
     fields: [
-        ['amount', 'u16'],
+        ['amount', 'u8'],
+    ],
+});
+
+SOLANA_SCHEMA.set(Reset, {
+    kind: 'struct',
+    fields: [],
+});
+
+SOLANA_SCHEMA.set(ResetTo, {
+    kind: 'struct',
+    fields: [
+        ['value', 'u16'],
     ],
 });
 
@@ -63,5 +89,7 @@ SOLANA_SCHEMA.set(CounterInstruction, {
         ['incrementBy', IncrementBy],
         ['decrement', Decrement],
         ['decrementBy', DecrementBy],
+        ['reset', Reset],
+        ['resetTo', ResetTo],
     ],
 });

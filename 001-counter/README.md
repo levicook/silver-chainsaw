@@ -64,56 +64,46 @@ recommend getting a feel for how it's used.
      `npm run --prefix=001-counter/client increment`
 
    - Increment the on-chain counter by an arbitrary amount \
-     `npm run --prefix=001-counter/client increment_by 1000`
+     `npm run --prefix=001-counter/client increment-by 10`
 
    - Decrement the on-chain counter by 1 with \
-     `npm run --prefix=001-counter/client increment`
+     `npm run --prefix=001-counter/client decrement`
 
    - Decrement the on-chain counter by an arbitrary amount \
-     `npm run --prefix=001-counter/client decrement_by 1000`
+     `npm run --prefix=001-counter/client decrement-by 10`
+
+   - Reset the on-chain counter to 0 with \
+     `npm run --prefix=001-counter/client reset`
+
+   - Reset the on-chain counter by an arbitrary value with \
+     `npm run --prefix=001-counter/client reset-to 20`
 
    - You can observe the counter by looking at your validator logs. eg:
      > Program log: process_increment (0 + 1)
 
-   - You can also observe the counter by looking at client logs. \
-     Full example below:
+   - increment-by and increment-by accept 8 bit numbers (0 through 255) \
+     and reset-to accept 16 bit numbers (0 through 65,535).
 
-```bash
-npm run --prefix=001-counter/client increment
+     - transactions that exceed these ranges will fail
 
-> client@0.1.0 increment
-> ts-node src/main.ts increment
+     - some range errors can be detected by borsh-js on the client-side
 
-Transaction 5kBbQ13CZypDyTT4cpvFNxdm76eUYoGKypJqaSmrJLjfnn7RncdRFDmDq16nWieisNJHLGaNRc3fEV1VfcS6EyeA {
-  blockTime: 1628650342,
-  meta: {
-    err: null,
-    fee: 5000,
-    innerInstructions: [],
-    logMessages: [
-      'Program RpxrTE3rPxoPT5WnDoAENzB8inYkJTDxnVhbLKyiBv9 invoke [1]',
-      'Program log: process_increment (4 + 1)',
-      'Program RpxrTE3rPxoPT5WnDoAENzB8inYkJTDxnVhbLKyiBv9 consumed 2440 of 200000 compute units',
-      'Program RpxrTE3rPxoPT5WnDoAENzB8inYkJTDxnVhbLKyiBv9 success'
-    ],
-    postBalances: [ 9999046280, 918720, 1009200, 1141440 ],
-    postTokenBalances: [],
-    preBalances: [ 9999051280, 918720, 1009200, 1141440 ],
-    preTokenBalances: [],
-    rewards: [],
-    status: { Ok: null }
-  },
-  slot: 2959,
-  transaction: {
-    message: Message {
-      header: [Object],
-      accountKeys: [Array],
-      recentBlockhash: 'D5jwHv6j27zainXsKss8YNaBWS6NVXKGAk1Uoh6YPYM7',
-      instructions: [Array]
-    },
-    signatures: [
-      '5kBbQ13CZypDyTT4cpvFNxdm76eUYoGKypJqaSmrJLjfnn7RncdRFDmDq16nWieisNJHLGaNRc3fEV1VfcS6EyeA'
-    ]
-  }
-}
-```
+     - running `reset-to 65536` will produce the following log output:
+       > RangeError [ERR_OUT_OF_RANGE]: The value of "value" is out of range. It must be >= 0 and <= 65535. Received 65536
+
+     - others can't be detected until you're on chain / in Rust
+
+     - running `reset` followed by an `decrement 1`
+       should produce the following log output:
+       > 'Program log: process_decrement (0 - 1)', \
+       > 'Program log: Underflow Error',
+
+     - try running `reset-to 65536` followed by an `increment 1`
+       should produce the following log output:
+       > 'Program log: process_increment (65535 + 1)', \
+       > 'Program log: Overflow Error',
+
+NOTE: Arithmetic underflow and overflow are common sources of security
+vulnerabilities and the main reaons I wanted to explore this "toy"
+program. Happy to see that Borsh and Rust do an _excellent_ job here.
+
