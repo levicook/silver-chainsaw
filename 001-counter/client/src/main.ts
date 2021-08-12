@@ -52,13 +52,17 @@ async function ensureRentExempt(connection: Connection, programStateKeypair: Key
         programId: programKeypair.publicKey,
     }));
 
-    await connection.sendTransaction(tx, [
+    const txId = await connection.sendTransaction(tx, [
         aliceKeypair,
         programStateKeypair,
     ], {
         preflightCommitment: 'max',
         skipPreflight: false,
     });
+
+    console.log('Transaction', txId, await connection.getTransaction(txId, {
+        commitment: 'confirmed'
+    }));
 }
 
 async function decrement(args: string[]) {
